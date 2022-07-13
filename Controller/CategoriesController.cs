@@ -22,36 +22,59 @@ namespace BlazorAPI.Controller
 
         // GET: api/Categories
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategory()
+        public async Task<ActionResult<IEnumerable<ObjectResult>>> GetCategory()
         {
-          if (_context.Category == null)
-          {
-              return NotFound();
-          }
-            return await _context.Category.ToListAsync();
+            if (_context.Category == null)
+            {
+                 return NotFound();
+            }
+            List<Category> categorys = await _context.Category.Include(c => c.IdO).ToListAsync();
+            List<ObjectResult> categoryResult = new List<ObjectResult>();
+            foreach (Category _category in categorys)
+            {
+                foreach (Objects _objects in _category.IdO)
+                {
+                    categoryResult.Add(new ObjectResult(_objects, _category));
+                }
+            }
+            return categoryResult;
         }
-
         // GET: api/Categories/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Category>> GetCategory(int? id,string? name)
+        [HttpGet("{id}")] 
+        public async Task<ActionResult<List<ObjectResult>>> GetCategory(string id)
         {
-          if (_context.Category == null)
-          {
-              return NotFound();
-          }
+            List<ObjectResult> categoryResult = new List<ObjectResult>();
+            List<Category> categorys;
 
-            var category = await _context.Category.FindAsync(id);
-
-            if (category == null)
+            if (_context.Category == null)
             {
                 return NotFound();
             }
 
-            return category;
+            if ( Int32.TryParse(id, out int l))
+            {
+                categorys = await _context.Category.Where(d => (d.Id == l)).Include(c => c.IdO).ToListAsync();
+            }
+            else 
+            {
+                categorys = await _context.Category.Where(d => d.Name == id).Include(c => c.IdO).ToListAsync();
+            }
+            if (categorys == null)
+            {
+                return NotFound();
+            }
+            foreach (Category _category in categorys)
+            { 
+                foreach(Objects _objects in _category.IdO)
+                {
+                    categoryResult.Add(new ObjectResult(_objects, _category));
+                }
+            }   
+            return categoryResult;
         }
 
         // PUT: api/Categories/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCategory(int id, Category category)
         {
@@ -119,6 +142,24 @@ namespace BlazorAPI.Controller
         private bool CategoryExists(int id)
         {
             return (_context.Category?.Any(e => e.Id == id)).GetValueOrDefault();
+        }
+    }
+    public class ObjectResult
+    {
+        public string Category { get; set; }
+        public string Name { get; set; }
+        public string Color { get; set; }
+        public string Size { get; set; }
+        public ObjectResult()
+        {
+            
+        }
+        public ObjectResult(Objects obj, Category cat)
+        {
+            Category = cat.Name;
+            Name = obj.Name;
+            Color = obj.Color;
+            Size = obj.Size;
         }
     }
 }
